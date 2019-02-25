@@ -5,13 +5,15 @@
 
 <h2 id="protocol-1-small-secret-peptide-gene-discovery-from-genomic-sequences">Protocol #1: Small Secret Peptide Gene discovery from genomic sequences</h2>
 <p>Traditional genome annotation policy is biased to discover long gene; leading to missing of some small secret peptide (SSP) genes. The following workflow was optimized to identify SSP gene from assembled genomic sequences utilizing specific RNA-seq data as expression evidence and conserved SSP motif.</p>
-<h3 id="pre-requisition">1.1 Pre-requisition</h3>
+<h3 id="prerequisite">1.1 Prerequisite</h3>
 <p><strong>1.1.1 Suggestion:</strong></p>
 <ol>
 <li>We recommend an X-windows desktop (such as gnome/XFCE/MATE) stead of SSH terminal because it is more convenient to edit file.</li>
 <li>All commands below are typed  under Linux terminal.</li>
-<li>A line start with <code>#</code> in Linux command line indicates that this is explanatory information which can be ignored.</li>
-<li>You need a no-root user with sudo privilege. Asking your system administrator to install docker service and add your user as a member of docker group if you can’t have <code>sudo</code> privileges. In this tutorial, default user is <code>test</code>.</li>
+<li>A line start with <code>#</code> in Linux command line indicates that this is explanatory information only.</li>
+<li>You need a no-root user with sudo privilege in host system to install docker packages and enable docker service. Asking your system administrator to install docker service and add your user as a member of docker group if you can’t have <code>sudo</code> privileges.</li>
+<li>You need to be a sudo user or a member of <code>docker</code> group in host system to start Docker container and attach to container terminal.</li>
+<li>Default user in Docker container is <code>test</code>.</li>
 </ol>
 <p><strong>1.1.2 Computer:</strong><br>
 A  high-performance computer (I7/Xeron processor and &gt;16GB RAM) with CentOS 7, Ubuntu 16.04 or higher as operation system.</p>
@@ -32,7 +34,7 @@ tar -xzvf ssp-demo.tar.gz
 </code></pre>
 <p>The above command will generate <code>ssp</code> folder under <code>work</code></p>
 <p><strong>1.1.6 Software installation:</strong><br>
-All software have been configured and packed as a docker image hosted in <a href="https://hub.docker.com/">Docker Hub</a>. Firstly, install, enable and start docker service:</p>
+All software have been configured and packed as a docker image hosted in <a href="https://hub.docker.com/">Docker Hub</a>. Firstly, install docker packages and enable/start docker service:</p>
 <pre><code>#under CentOS 7, install docker packages:
 sudo yum install docker
 #or if you are using Ubuntu, install docker packages as below:
@@ -42,7 +44,7 @@ sudo apt install docker.io
 sudo systemctl enable docker
 sudo systemctl start docker    
 </code></pre>
-<p>Then, install Docker image and start a container of  the image to input Linux command line:</p>
+<p>Then, start a container of SSP-mining image to input Linux command line:</p>
 <pre><code>#start a Docker container with name `bioinfo` using xxx as template image
 #this step will take a while depend on your network speed
 sudo docker run -d -it -e "uid=$(id -u)" -e "gid=$(id -g)" --name bioinfo -v $(pwd)/work:/work centos7bioperl:test6 shell
@@ -133,8 +135,8 @@ time /usr/lib64/mpich/bin/mpiexec -n 20 maker -fix_nucleotides maker_opts_1.ctl 
 </ul>
 <h2 id="protocol-2-functional-annotation-and-family-classification-of-ssp-genes">Protocol #2: Functional annotation and family classification of SSP genes</h2>
 <p>Due to the short conserved region and less homologous among the member of the same gene family, it is less efficient to search and identify SSP protein using standard NCBI BLASTP.  Here we introduce a comprehensive  annotation procedure to identify SSP gene from candidate genes.</p>
-<h3 id="pre-requisition-1">2.1 Pre-requisition</h3>
-<p>The pre-requisition is almost the same as ptotocol #1 with only exception on input data.</p>
+<h3 id="prerequisite-1">2.1 Prerequisite</h3>
+<p>The Prerequisite is almost the same as protocol #1 (see 1.1) with only exception on input data.</p>
 <p><strong>2.1.1 Input data</strong></p>
 <ul>
 <li>SSP gene expression specific RNA-seq data in compress fastq format</li>
@@ -143,7 +145,7 @@ time /usr/lib64/mpich/bin/mpiexec -n 20 maker -fix_nucleotides maker_opts_1.ctl 
 </ul>
 <h3 id="smith-waterman-search-against-known-ssp-protein">2.2 Smith-waterman search against known SSP protein</h3>
 <p>Smith-Waterman alignment is more accurate way for sequence homolog search compared to BLAST search. The wrapped shell script <code>swsearch</code> use <a href="https://fasta.bioch.virginia.edu/fasta_www2/fasta_list2.shtml">FASTA</a> software to perform Smith-waterman search against known SSP proteins (<code>target.fa</code> in demo data) and take top 2 hits (Expection&lt;0.01) as output. The script will remove hit sequence ID and only output family name.</p>
-<pre><code>swsearch  all_protein.fa /work/ssp/data/target.fa &gt; sw.txt
+<pre><code>swsearch  all_protein.fa /work/ssp/data/ssp_family.fa &gt; sw.txt
 </code></pre>
 <h3 id="hmm-search-against-hmms-of-known-ssp-families">2.3 HMM search against HMMs of known SSP families</h3>
 <p>Generate HMM library for all known SSP families from SPADA pipeline</p>
@@ -161,8 +163,21 @@ time /usr/lib64/mpich/bin/mpiexec -n 20 maker -fix_nucleotides maker_opts_1.ctl 
 <pre><code>/opt/spada_soft/signalp-4.1/signalp -t euk -f long -s notm all_protein.fa &gt; signalp_long.txt
 cat signalp_long.txt | singalP_parser  &gt; sp.txt
 </code></pre>
-<p><code>singalP_parser</code> is a script to parse long format output of SignalP. The final signal peptide prediction result <code>sp.txt</code> includes four columns:  gene ID,  start coordinates,  end coordinates,  D-value, cut-off and conclusion(YES/NO)</p>
+<p>In this case, <code>/opt/spada_soft/signalp-4.1/signalp</code> is Signalp program which output prediction result file <code>signalp_long.txt</code>.  <code>singalP_parser</code> is a script to parse long format output of SignalP. The final signal peptide prediction result <code>sp.txt</code> includes four columns:  gene ID,  start coordinates,  end coordinates,  D-value, cut-off and conclusion(YES/NO)</p>
 <h3 id="identification-of-novel-ssp-gene-families-using-mcl-analysis">2.5 Identification of novel SSP gene families using MCL analysis</h3>
+<p>SSP candidate (signalp D-value&gt;0.25)   can be clustered into candidate SSP families using Markov Chain Cluster (MCL). The procedure should be performed on last 50 a.a. and candidate  pipetide should be less than 200 a.a…</p>
+<pre><code>#create index to retrieve sequence by sequnece ID
+cdbfasta all_protein.fa
+#only will take the protein with D-value&gt;0.25
+cat sp.txt | awk '{if($4&gt;0.25) print $1}' | cdbyank all_protein.fa.cidx  &gt; all_putative_ssp.fa
+# the final candidates should be shorter than 200 a.a. and only take the last 50 a.a..
+shortseqtail all_putative_ssp.fa 200 50 &gt; peptide-tail.fa
+</code></pre>
+<p>Generate protein vs protein relationship pairs:</p>
+<pre><code>search35_t -T 20 -Q -H -m 9 -b 100 -d 100 peptide-tail.fa peptide-tail.fa &gt; sw_for_peptidetail
+bioparser -t ssearch -m sw_for_peptidetail |awk '{print $3,$6,$14}' FS="\t" |sort | uniq &gt; protein-protein-rel.txt
+</code></pre>
+<p><code>protein-protein-rel.txt</code> is a three column file with two protein/gene IDs and e-value.</p>
 <h3 id="gene-expression-analysis-of-rna-seq-data">2.6 Gene expression analysis of RNA-seq data</h3>
 <h3 id="comprehensive-table-of-gene-annotation-evidence">2.7 Comprehensive table of gene annotation evidence</h3>
 <p>The eviden</p>
