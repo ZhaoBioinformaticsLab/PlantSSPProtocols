@@ -147,17 +147,19 @@ time /usr/lib64/mpich/bin/mpiexec -n 20 maker -fix_nucleotides maker_opts_1.ctl 
 <p>Smith-Waterman alignment is more accurate way for sequence homolog search compared to BLAST search. The wrapped shell script <code>swsearch</code> use <a href="https://fasta.bioch.virginia.edu/fasta_www2/fasta_list2.shtml">FASTA</a> software to perform Smith-waterman search against known SSP proteins (<code>target.fa</code> in demo data) and take top 2 hits (Expection&lt;0.01) as output. The script will remove hit sequence ID and only output family name.</p>
 <pre><code>swsearch  all_protein.fa /work/ssp/data/ssp_family.fa &gt; sw.txt
 </code></pre>
+<p>The final result file is <code>sw.txt</code> in this case.</p>
 <h3 id="hmm-search-against-hmms-of-known-ssp-families">2.3 HMM search against HMMs of known SSP families</h3>
-<p>Generate HMM library for all known SSP families from SPADA pipeline</p>
+<p><strong>2.3.1  Generate HMM library for all known SSP families from SPADA pipeline</strong></p>
 <pre><code>cat /opt/spada_soft/spada/CRP_PlantSSPv1_Noble/15_hmm/*.hmm &gt; all.hmm
 </code></pre>
-<p>compile HMM library</p>
+<p><strong>2.3.2  compile HMM library</strong></p>
 <pre><code>hmmpress  all.hmm 
 </code></pre>
-<p>search your protein sequence ‘all_protein.fa’ against HMM library ‘all.hmm’</p>
+<p><strong>2.3.3  search your protein sequence against HMM library</strong></p>
 <pre><code>hmmscan --cpu 20 -E 0.01 --tblout hmm_output.txt all.hmm all_protein.fa &gt; /dev/null
 </code></pre>
-<p>The expectation cutoff for <code>hmmscan</code> is <code>0.01</code>. <code>all_protein.fa</code> is input protein file. The above commands will generate a tab-delimited table file <code>hmm_output.txt</code>.  In the result table, column 1 is HMM family name and column 2 is gene ID in input protein sequence file.</p>
+<p>The expectation cutoff for <code>hmmscan</code> is <code>0.01</code>. <code>all_protein.fa</code> is input protein file. <code>all.hmm</code> is HMM library files.</p>
+<p>The above commands will generate a tab-delimited table file <code>hmm_output.txt</code>.  In the result table, column #1 is HMM family name and column #2 is gene ID in input protein sequence file.</p>
 <h3 id="signal-peptide-detection">2.4 Signal peptide detection</h3>
 <p>We choose SignalP to predict signal peptide from SSP candidate peptides. We recommend to use “No TM” and long output format. D-score thresholds are usually 0.45 or 0.5, depending on the type of network chosen (with or without transmembrane segments), but we recommend to use a D-score of ≥ 0.45 for known SSPs or ≥ 0.25 for putative SSPs.</p>
 <pre><code>/opt/spada_soft/signalp-4.1/signalp -t euk -f long -s notm all_protein.fa &gt; signalp_long.txt
@@ -166,19 +168,33 @@ cat signalp_long.txt | singalP_parser  &gt; sp.txt
 <p>In this case, <code>/opt/spada_soft/signalp-4.1/signalp</code> is Signalp program which output prediction result file <code>signalp_long.txt</code>.  <code>singalP_parser</code> is a script to parse long format output of SignalP. The final signal peptide prediction result <code>sp.txt</code> includes four columns:  gene ID,  start coordinates,  end coordinates,  D-value, cut-off and conclusion(YES/NO)</p>
 <h3 id="identification-of-novel-ssp-gene-families-using-mcl-analysis">2.5 Identification of novel SSP gene families using MCL analysis</h3>
 <p>SSP candidate (signalp D-value&gt;0.25)   can be clustered into candidate SSP families using Markov Chain Cluster (MCL). The procedure should be performed on last 50 a.a. and candidate  pipetide should be less than 200 a.a…</p>
-<pre><code>#create index to retrieve sequence by sequnece ID
-cdbfasta all_protein.fa
-#only will take the protein with D-value&gt;0.25
-cat sp.txt | awk '{if($4&gt;0.25) print $1}' | cdbyank all_protein.fa.cidx  &gt; all_putative_ssp.fa
-# the final candidates should be shorter than 200 a.a. and only take the last 50 a.a..
-shortseqtail all_putative_ssp.fa 200 50 &gt; peptide-tail.fa
+<p><strong>2.5.1. Create index to retrieve protein sequence by sequence ID.</strong></p>
+<pre><code>cdbfasta all_protein.fa
 </code></pre>
-<p>Generate protein vs protein relationship pairs:</p>
+<p><strong>2.5.2 Only will take the protein with D-value&gt;0.25.</strong></p>
+<pre><code>cat sp.txt | awk '{if($4&gt;0.25) print $1}' | cdbyank all_protein.fa.cidx  &gt; all_putative_ssp.fa
+</code></pre>
+<p><strong>2.5.3 The candidate proteins should be shorter than 200 a.a. and only take the last 50 a.a…</strong></p>
+<pre><code>shortseqtail all_putative_ssp.fa 200 50 &gt; peptide-tail.fa
+</code></pre>
+<p><strong>2.5.4 Generate protein vs protein relationship file.</strong></p>
 <pre><code>search35_t -T 20 -Q -H -m 9 -b 100 -d 100 peptide-tail.fa peptide-tail.fa &gt; sw_for_peptidetail
-bioparser -t ssearch -m sw_for_peptidetail |awk '{print $3,$6,$14}' FS="\t" |sort | uniq &gt; protein-protein-rel.txt
+
+bioparser -t ssearch -m sw_for_peptidetail | awk '{print $3,$6,$14}' FS="\t" | sort | uniq | awk '{ if($1!=$2&amp;&amp;$3 &lt; 0.01)) print $0; }' FS=" " &gt; protein-protein-rel.txt
 </code></pre>
-<p><code>protein-protein-rel.txt</code> is a three column file with two protein/gene IDs and e-value.</p>
+<p><code>protein-protein-rel.txt</code> is a three columns file with two protein/gene IDs and their relation in e-value. All protein-protein pair with e-vakue&gt;0.01 have been removed.</p>
+<p><strong>2.5.5 Cluster  protein into clusters</strong></p>
+<pre><code>mcxload -abc protein-protein-rel.txt --stream-mirror --stream-neg-log10 -stream-tf 'ceil(200)' -o protein-protein.mci -write-tab protein-protein.tab
+mcl last50seq.mci -I 1.4 -use-tab protein-protein.tab
+</code></pre>
+<p>In this case, <code>mcl</code> command will generate <code>out.last50seq.mci.I14</code>, in which all gene/protein belonging to the same cluster will be put in one line.</p>
+<p>Next, try type following command to generate a cluster name vs gene/protein ID table file.</p>
+<pre><code>cat out.last50seq.mci.I14 | awk '{print "Cluster_" NR "\t" $0}' |awk '{ OFS="\n" $1 "\t";$1="";print $0;}'|grep -Pv '^\s*$' &gt; mclcluster_protein.txt
+</code></pre>
+<p><code>mclcluster_protein.txt</code> is the result file containing cluster-protein mapping.</p>
 <h3 id="gene-expression-analysis-of-rna-seq-data">2.6 Gene expression analysis of RNA-seq data</h3>
+<p>Follow the protocol described <a href="https://github.com/trinityrnaseq/trinityrnaseq/wiki/Trinity-Transcript-Quantification">here</a> to generate gene expression table using RNA-seq  data. In generated table, each gene will occupy one row and each RNA-seq sample will take one column. We recommend transcript per million transcripts (TPM) value in this table.</p>
 <h3 id="comprehensive-table-of-gene-annotation-evidence">2.7 Comprehensive table of gene annotation evidence</h3>
-<p>The eviden</p>
+<p>The result file generated from Section 2.2 to 2.6 should be merged  into a comprehensive data table in which each gene will use one row and each annotation information, such as RNA-seq sample, family name from Smith-Waterman search and HMM search, D-value from signalP and cluster ID from MCL analysis will be take one column. Microsoft Excel is a nice tool to merge and generate such comprehensive table.</p>
+<p>Further curation based on the table will help to screen known and putative SSP genes. The genes with Smith-Waterman or HMM hits will be considered as known SSP genes. Other genes with D-value(&gt;0.25) and shorter than 200 a.a. will be  considered as putative SSP genes. The gene expression value is also helpful to identify gene with high confidence.</p>
 
