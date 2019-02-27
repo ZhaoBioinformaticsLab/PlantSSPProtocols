@@ -32,7 +32,7 @@ The demo data is available for <a href="">download</a>. Copy it to <code>work</c
 <pre><code>cd work
 tar -xzvf ssp-demo.tar.gz
 </code></pre>
-<p>The above command will generate <code>ssp</code> folder under <code>work</code>. In the <code>ssp/data</code> folder, <code>ssp_family.fa</code> is protein sequences of known SSP genes.</p>
+<p>The above command will generate <code>ssp</code> folder under <code>work</code>. In the <code>ssp/data</code> folder, <code>ssp_family.fa</code> is protein sequences of known SSP genes. The known SSP file is used in Maker genome annotation (Protocol #1) and SSP gene annotation (Protocol #2).</p>
 <p><strong>1.1.6 Software installation:</strong><br>
 All software have been configured and packed as a docker image hosted in <a href="https://hub.docker.com/">Docker Hub</a>. Firstly, install docker packages and enable/start docker service:</p>
 <pre><code>#under CentOS 7, install docker packages:
