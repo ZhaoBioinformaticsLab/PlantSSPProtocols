@@ -31,8 +31,9 @@ mkdir work
 <li>Other EST/transcript sequences from the same species.</li>
 </ul>
 <p><strong>1.1.5 Demo data</strong><br>
-The demo data is available for <a href="">download</a>. <strong>In host OS</strong>, copy it to your work folder and type the following command to unzip it.</p>
+The demo data is available for <a href="http://bioinfo.noble.org/manuscript-support/ssp-protocol/ssp-demo.tar.gz">download</a>. <strong>In host OS</strong>, copy it to your work folder and type the following command to unzip it.</p>
 <pre><code>cd ~/work
+wget http://bioinfo.noble.org/manuscript-support/ssp-protocol/ssp-demo.tar.gz
 tar -xzvf ssp-demo.tar.gz
 </code></pre>
 <p>The above command will generate <code>ssp</code> folder under <code>work</code>.</p>
