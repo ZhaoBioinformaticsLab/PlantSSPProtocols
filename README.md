@@ -50,7 +50,7 @@ sudo systemctl start docker
 sudo docker run -d -it -e "uid=$(id -u)" -e "gid=$(id -g)" --name bioinfo -v $(pwd)/work:/work docker.io/noblebioinfo/sspgene
 sudo docker attach bioinfo
 </code></pre>
-<p><code>$(pwd)/work</code> indicates that the <code>work</code> folder under current directory will be mounted on <code>/work</code> in Docker container. This is the folder you exchange data between Host computer (<code>$(pwd)/work</code>) and container virtual machine (<code>/work</code>).</p>
+<p><code>$(pwd)/work</code> indicates that the <code>work</code> folder under current directory will be mounted on <code>/work</code> in Docker container with name <code>bioinfo</code>. This is the folder you exchange data between Host computer (<code>$(pwd)/work</code>) and container virtual machine (<code>/work</code>).</p>
 <p>The <code>attach</code> subcommand will link your current Linux terminal to the running docker container (<code>bioinfo</code> in this case).  Tips:  Hold Ctrl key and press P,Q to detach the container terminal and get back to host OS.</p>
 <p>Type the following command to enter demo data folder work folder in attached Docker container terminal</p>
 <pre><code>cd /work/ssp
@@ -111,42 +111,34 @@ time /usr/lib64/mpich/bin/mpiexec -n 20 maker -fix_nucleotides maker_opts_1.ctl 
 <p>The gff  file is available at <code>sspanno/31_model_evaluation/61_final.gff</code></p>
 <h3 id="merge-the-annotation-result-from-maker-and-spada">1.4 Merge the annotation result from Maker and SPADA</h3>
 <p>There are (partially) duplicate genes between Maker and SPADA output. Additionally, users also need to consider the duplicate gene model in reference annotation if you are working on a model plant. Here we describe the policy of  identifying duplicated gene list:</p>
-<ul>
-<li>
-<p>Generate cds sequence from different annotation using gff and genomic sequences</p>
+<p><strong>1.4.1 Generate cds sequence from different annotation using gff and genomic sequences</strong></p>
 <p>Generate CDS sequences for SPADA gene models:</p>
 <pre><code>gffread sspanno/31_model_evaluation/61_final.gff -g data/genome.fa -x spada_cds.fa
 </code></pre>
 <p>Replace transcript id with gene id:</p>
-<pre><code>sed -ri 's/^&gt;\S+\s+gene=/&gt;/' spada_cds.fa     
+<pre><code>  sed -ri 's/^&gt;\S+\s+gene=/&gt;/' spada_cds.fa     
 </code></pre>
-</li>
-<li>
-<p>Run NCBI BLASTN between two generated cds files and only keep the query-hit gene pairs with &gt; 50% overlapped region.-</p>
-</li>
-<li>
-<p>Check the coordinates of the query-hit pairs in gff file. If both genes share overlapped region and the same direction on chromosome, choose one of them as redundant gene.</p>
-</li>
-<li>
-<p>Remove duplicate genes from corresponding gff file.  <code>nr_gene_in_spada.txt</code> includes gen list to be removed. <code>new_spada.gff</code> is new gff file.</p>
-<pre><code>  gffremove.py --infile sspanno/31_model_evaluation/61_final.gff --outfile new_spada.gff --genefile nr_gene_in_spada.txt
+<p><strong>1.4.2 Run NCBI BLASTN between two generated cds files and only keep the query-hit gene pairs with &gt; 50% overlapped region.</strong></p>
+<p><strong>1.4.3 Check the coordinates of the query-hit pairs in gff file</strong></p>
+<p>If both genes share overlapped region and the same direction on chromosome, choose one of them as redundant gene**</p>
+<p><strong>1.4.4 Remove duplicate genes from corresponding GFF file</strong></p>
+<pre><code>gffremove.py --infile sspanno/31_model_evaluation/61_final.gff --outfile new_spada.gff --genefile nr_gene_in_spada.txt
 </code></pre>
-</li>
-<li>
-<p>Merge two gff files (taking <code>maker.gff</code> and <code>new_spada.gff</code> as example):</p>
-<pre><code>  head -1 maker.gff  &gt; all.gff
-  grep -v '^#' maker.gff new_spada.gff  &gt;&gt; maker_spada.gff
+<p><code>nr_gene_in_spada.txt</code> includes gen list to be removed. <code>new_spada.gff</code> is new gff file.</p>
+<p><strong>1.4.5 Merge two GFF files</strong></p>
+<p>Take <code>maker.gff</code> and <code>new_spada.gff</code> as example</p>
+<pre><code>    head -1 maker.gff  &gt; all.gff
+    grep -v '^#' maker.gff new_spada.gff  &gt;&gt; maker_spada.gff
 </code></pre>
-</li>
-<li>
-<p>Generate protein and transcript files:</p>
-<pre><code> gffread all.gff -g data/genome.fa -y all_protein.fa
- sed -ri 's/^&gt;\S+\s+gene=/&gt;/' all_protein.fa
- gffread all.gff -g data/genome.fa -w all_transcript.fa
+<p><strong>1.4.6 Generate protein and transcript files</strong></p>
+<p>Protein sequences:</p>
+<pre><code>gffread all.gff -g data/genome.fa -y all_protein.fa
+sed -ri 's/^&gt;\S+\s+gene=/&gt;/' all_protein.fa
+</code></pre>
+<p>Transcript sequences:</p>
+<pre><code>gffread all.gff -g data/genome.fa -w all_transcript.fa
 </code></pre>
 <p>The protein and transcript files will be used to further annotate gene function in protocol #2.</p>
-</li>
-</ul>
 <h2 id="protocol-2-functional-annotation-and-family-classification-of-ssp-genes">Protocol #2: Functional annotation and family classification of SSP genes</h2>
 <p>Due to the short conserved region and less homologous among the member of the same gene family, it is less efficient to search and identify SSP protein using standard NCBI BLASTP.  Here we introduce a comprehensive  annotation procedure to identify SSP gene from candidate genes.</p>
 <h3 id="prerequisite-1">2.1 Prerequisite</h3>
