@@ -36,7 +36,7 @@ The demo data is available for <a href="">download</a>. <strong>In host OS</stro
 tar -xzvf ssp-demo.tar.gz
 </code></pre>
 <p>The above command will generate <code>ssp</code> folder under <code>work</code>.</p>
-<p>In the <code>~/work/ssp/data</code> folder, <code>ssp_family.fa</code> is protein sequences of known SSP genes. The known SSP file is used in Maker genome annotation (Protocol #1) and SSP gene annotation (Protocol #2).</p>
+<p>In the <code>~/work/ssp/data</code> folder, <code>ssp_family.fa</code> is a protein sequences of known SSP genes. The known SSP file is used in Maker genome annotation (Protocol #1) and SSP gene annotation (Protocol #2).</p>
 <p><strong>1.1.6 Software installation:</strong><br>
 All software have been configured and packed as a docker image hosted in <a href="https://hub.docker.com/">Docker Hub</a>. Firstly, install docker packages and enable/start docker service in your host OS:</p>
 <p>Under CentOS 7, install docker packages:</p>
@@ -54,7 +54,7 @@ sudo systemctl start docker
 sudo docker attach sspvm
 </code></pre>
 <p>The above commands will start a Docker container named <code>sspvm</code> using  <code>docker.io/noblebioinfo/sspgene</code> as template image. The step will take a while depend on your network download speed.</p>
-<p>In  <code>-v $(pwd)/work:/work</code>:  <code>$(pwd)/work</code>, the path of work folder in your host OS, is <code>work</code> under your current directory. Here,<code>$(pwd)</code> will be converted to your current folder, e.g. home folder by Linux Bash interpreter. The work folder in host OS will be mounted on <code>/work</code> in Docker container. Thus, the folder makes it possible to exchange data between Host computer (<code>$(pwd)/work</code>) and Docker container  (<code>/work</code>). You can copy your demo data or other research data to the work folder under hosts OS <code>$(pwd)/work</code> and access them in <code>/work</code> under Docker container.</p>
+<p>In  <code>-v $(pwd)/work:/work</code>:  <code>$(pwd)/work</code>, the path of work folder in your host OS, is <code>work</code> under your current directory. Here,<code>$(pwd)</code> will be converted to your current folder, e.g. home folder by Linux Bash interpreter. The work folder in host OS will be mounted on <code>/work</code> in Docker container. Thus, the folder makes it possible to exchange data between Host computer (<code>$(pwd)/work</code>) and Docker container  (<code>/work</code>). You can copy your demo data or other research data to the work folder in hosts OS (<code>$(pwd)/work</code>) and access them in <code>/work</code> in Docker container.</p>
 <p>The <code>attach</code> subcommand will link your current Linux terminal to the running docker container (<code>bioinfo</code> in this case).  Tips:  Hold Ctrl key and press P,Q to detach the container terminal and get back to host OS.</p>
 <p>Type the following command to enter demo data folder work folder in attached Docker container terminal</p>
 <pre><code>cd /work/ssp
@@ -71,12 +71,14 @@ cd transcriptome/
 <pre><code>hisat2-build data/genome.fa genome_hisat2
 </code></pre>
 <p><strong>1.2.3 Extract splicing sites (if reference annotation is available) using HISAT2</strong></p>
-<pre><code>gffread data/ref.gff3 -T -o ref.gtf
+<pre><code>gffread data/maker/ref.gff3 -T -o ref.gtf
 hisat2_extract_splice_sites.py ref.gtf &gt; splicesites.txt
 </code></pre>
 <p><strong>1.2.4 Map RNA-seq read on genomic sequences</strong></p>
-<pre><code>time hisat2 -p 20 -x genome_hisat2 --known-splicesite-infile splicesites.txt --dta --dta-cufflinks -1 data/RNA-seq/root_R1.fq.gz,data/RNA-seq/nod_R1.fq.gz,data/RNA-seq/bud_R1.fq.gz -2 data/RNA-seq/root_R2.fq.gz,data/RNA-seq/nod_R2.fq.gz,data/RNA-seq/bud_R2.fq.gz -U data/RNA-seq/SRR1377073.fastq.gz,data/RNA-seq/SRR1377076.fastq.gz | samtools view -bS - &gt; all_runs.bam
+<pre><code>time hisat2 -p 20 -x genome_hisat2 --known-splicesite-infile splicesites.txt --dta --dta-cufflinks -1 data/RNA-seq/root_R1.fq.gz,data/RNA-seq/bud_R1.fq.gz -2 data/RNA-seq/root_R2.fq.gz,data/RNA-seq/bud_R2.fq.gz | samtools view -bS - &gt; all_runs.bam
 </code></pre>
+<p><code>-1</code> and <code>-2</code> are input parameters for pair-end libraries<br>
+<code>-U</code> is for single end libraries</p>
 <p>Mapping result is <code>all_runs.bam</code> in this example.</p>
 <p><strong>1.2.5 Sort BAM file using sambamba</strong></p>
 <pre><code>sambamba sort -m 40G --tmpdir tmp/ -o all_runs.sorted.bam -p -t 20 all_runs.bam
@@ -88,11 +90,12 @@ cufflinks2gff3  transcriptome/transcriptome_models.gtf &gt; transcriptome/transc
 </code></pre>
 <p>In above commands, <code>-p 20</code> or <code>-t 20</code> is the number of CPU cores assigned to the program. Type <code>nproc</code> to check the maximum number in your computer. <code>-m 40G</code> is max RAM size assigned to your computer. Type <code>free</code> to check your computer RAM size.<br>
 <code>transcriptome/transcriptome_models.gff3</code> contains transcriptome data which is expression evidence in Maker genome annotation (next step)</p>
-<h3 id="optimized-genome-annotation-procedure-for-mining-ssp-gene-using-maker-pipeline">1.2 Optimized genome annotation procedure for mining SSP gene using Maker pipeline</h3>
+<h3 id="optimized-genome-annotation-procedure-for-mining-ssp-gene-using-maker-pipeline">1.3 Optimized genome annotation procedure for mining SSP gene using Maker pipeline</h3>
 <p>General genome annotation procedure can be optimized to identify more SSP gene through including SSP-specific expression evidence and conserved known SSP domain.</p>
-<p><strong>1.2.1. prepare Maker configuration file</strong><br>
-The protocol for genome annotation using Maker has been well documented [ref]. We installed and tested Maker pipeline in the Docker image xxx. Users need to generate three maker_opts files: <code>maker_opts_1.ctl</code>, <code>maker_opts_2.ctl</code> and <code>maker_opts_3.ctl</code>. In addition, Maker also need maker_bopts.ctl and maker_exe.ctl files. These files include input data files path and other settings for genome annotation. Maker will take these files  as input to generate final gff file with genome annotation information. The annotation procedure will be typically invoked for three rounds to generate optimized result.</p>
+<p><strong>1.3.1. prepare Maker configuration file</strong><br>
+The protocol for genome annotation using Maker has been well documented [ref]. We installed and tested Maker pipeline in the Docker image. Users need to generate three maker_opts files: <code>maker_opts_1.ctl</code>, <code>maker_opts_2.ctl</code> and <code>maker_opts_3.ctl</code>. In addition, Maker also need maker_bopts.ctl and maker_exe.ctl files. These files include input data files path and other settings for genome annotation. Maker will take these files  as input to generate final gff file with genome annotation information. The annotation procedure will be typically invoked for three rounds to generate optimized result.</p>
 <p>The GFF file for transcriptome generated by previous step and known SSP protein sequences (as of 01/2019, under /work/ssp/data) will be put in above three maker_opts files (line 18 and 23). The extra information will help maker to identify novel SSP genes.</p>
+<p><strong>1.3.2 Run MAKER pipeline</strong></p>
 <p>We included all Maker configuration files in demo data. Users should be able to test Maker for the first round using the following command:</p>
 <pre><code>cd /work/ssp
 time /usr/lib64/mpich/bin/mpiexec -n 20 maker -fix_nucleotides maker_opts_1.ctl maker_bopts.ctl maker_exe.ctl  1&gt;&amp;2 2&gt;log
@@ -102,7 +105,7 @@ time /usr/lib64/mpich/bin/mpiexec -n 20 maker -fix_nucleotides maker_opts_1.ctl 
 <pre><code>gff3_merge -d genome.maker.output/genome_master_datastore_index.log -s &gt; maker_all.gff
 (head -1 maker_all.gff;cat maker_heavy.gff|grep -P $'\t(CDS|contig|exon|five_prime_UTR|gene|mRNA|three_prime_UTR)\t') &gt; maker.gff
 </code></pre>
-<h3 id="ssp-genome-annotation-using-spada-pipeline">1.3 SSP genome annotation using SPADA pipeline</h3>
+<h3 id="ssp-genome-annotation-using-spada-pipeline">1.4 SSP genome annotation using SPADA pipeline</h3>
 <p>SPADA pipeline typically utilizes conserved domain (in HMM format) information of known SSP families to identify SSP gene from genomic sequences[ref]. We included a copy of SPADA and a comprehensive HMM dataset from <a href="">PlantSSPDB</a> database and our curation in Docker image.</p>
 <p>Here is an example of SPADA analysis:</p>
 <pre><code>perl /opt/spada_soft/spada/spada.pl --cfg /opt/spada_soft/spada/cfg.txt -d sspanno -p /opt/spada_soft/spada/CRP_PlantSSPv1_Noble -f data/genome.fa -t 20 -o arabidopsis 1&gt;&amp;2 2&gt;log
@@ -113,28 +116,28 @@ time /usr/lib64/mpich/bin/mpiexec -n 20 maker -fix_nucleotides maker_opts_1.ctl 
 <code>data/genome.fa</code>: is the genomic sequences to be analyzed.<br>
 <code>arabidopsis</code>: one of folder name under <code>/opt/spada_soft/augustus/config/species/</code>. Change it to the closest species in your case.</p>
 <p>The gff  file is available at <code>sspanno/31_model_evaluation/61_final.gff</code></p>
-<h3 id="merge-the-annotation-result-from-maker-and-spada">1.4 Merge the annotation result from Maker and SPADA</h3>
+<h3 id="merge-the-annotation-result-from-maker-and-spada">1.5 Merge the annotation result from Maker and SPADA</h3>
 <p>There are (partially) duplicate genes between Maker and SPADA output. Additionally, users also need to consider the duplicate gene model in reference annotation if you are working on a model plant. Here we describe the policy of  identifying duplicated gene list:</p>
-<p><strong>1.4.1 Generate cds sequence from different annotation using gff and genomic sequences</strong></p>
+<p><strong>1.5.1 Generate cds sequence from different annotation using gff and genomic sequences</strong></p>
 <p>Generate CDS sequences for SPADA gene models:</p>
 <pre><code>gffread sspanno/31_model_evaluation/61_final.gff -g data/genome.fa -x spada_cds.fa
 </code></pre>
 <p>Replace transcript id with gene id:</p>
 <pre><code>  sed -ri 's/^&gt;\S+\s+gene=/&gt;/' spada_cds.fa     
 </code></pre>
-<p><strong>1.4.2 Run NCBI BLASTN between two generated cds files and only keep the query-hit gene pairs with &gt; 50% overlapped region.</strong></p>
-<p><strong>1.4.3 Check the coordinates of the query-hit pairs in gff file</strong></p>
+<p><strong>1.5.2 Run NCBI BLASTN between two generated cds files and only keep the query-hit gene pairs with &gt; 50% overlapped region.</strong></p>
+<p><strong>1.5.3 Check the coordinates of the query-hit pairs in gff file</strong></p>
 <p>If both genes share overlapped region and the same direction on chromosome, choose one of them as redundant gene**</p>
-<p><strong>1.4.4 Remove duplicate genes from corresponding GFF file</strong></p>
+<p><strong>1.5.4 Remove duplicate genes from corresponding GFF file</strong></p>
 <pre><code>gffremove.py --infile sspanno/31_model_evaluation/61_final.gff --outfile new_spada.gff --genefile nr_gene_in_spada.txt
 </code></pre>
 <p><code>nr_gene_in_spada.txt</code> includes gen list to be removed. <code>new_spada.gff</code> is new gff file.</p>
-<p><strong>1.4.5 Merge two GFF files</strong></p>
+<p><strong>1.5.5 Merge two GFF files</strong></p>
 <p>Take <code>maker.gff</code> and <code>new_spada.gff</code> as example</p>
 <pre><code>    head -1 maker.gff  &gt; all.gff
     grep -v '^#' maker.gff new_spada.gff  &gt;&gt; maker_spada.gff
 </code></pre>
-<p><strong>1.4.6 Generate protein and transcript files</strong></p>
+<p><strong>1.5.6 Generate protein and transcript files</strong></p>
 <p>Protein sequences:</p>
 <pre><code>gffread all.gff -g data/genome.fa -y all_protein.fa
 sed -ri 's/^&gt;\S+\s+gene=/&gt;/' all_protein.fa
