@@ -35,27 +35,27 @@ tar -xzvf ssp-demo.tar.gz
 <p>The above command will generate <code>ssp</code> folder under <code>work</code>. In the <code>ssp/data</code> folder, <code>ssp_family.fa</code> is protein sequences of known SSP genes. The known SSP file is used in Maker genome annotation (Protocol #1) and SSP gene annotation (Protocol #2).</p>
 <p><strong>1.1.6 Software installation:</strong><br>
 All software have been configured and packed as a docker image hosted in <a href="https://hub.docker.com/">Docker Hub</a>. Firstly, install docker packages and enable/start docker service:</p>
-<pre><code>#under CentOS 7, install docker packages:
-sudo yum install docker
-#or if you are using Ubuntu, install docker packages as below:
-sudo apt install docker.io
-
-#enable and start docker service for CentOS/ubuntu
-sudo systemctl enable docker
+<p>Under CentOS 7, install docker packages:</p>
+<pre><code>sudo yum install docker
+</code></pre>
+<p>If you are using Ubuntu, install docker packages as below:</p>
+<pre><code>sudo apt install docker.io
+</code></pre>
+<p>Enable and start docker service for CentOS/ubuntu:</p>
+<pre><code>sudo systemctl enable docker
 sudo systemctl start docker    
 </code></pre>
 <p>Then, start a container of SSP-mining image to input Linux command line:</p>
-<pre><code>#start a Docker container with name `bioinfo` using xxx as template image
-#this step will take a while depend on your network speed
-sudo docker run -d -it -e "uid=$(id -u)" -e "gid=$(id -g)" --name bioinfo -v $(pwd)/work:/work docker.io/noblebioinfo/sspgene
+<pre><code>sudo docker run -d -it -e "uid=$(id -u)" -e "gid=$(id -g)" --name bioinfo -v $(pwd)/work:/work docker.io/noblebioinfo/sspgene
 sudo docker attach bioinfo
 </code></pre>
+<p>In above case, user start a Docker container with name <code>bioinfo</code> using <a href="http://docker.io/noblebioinfo/sspgene">docker.io/noblebioinfo/sspgene</a> as template image. The step will take a while depend on your network download speed.</p>
 <p><code>$(pwd)/work</code> indicates that the <code>work</code> folder under current directory will be mounted on <code>/work</code> in Docker container with name <code>bioinfo</code>. This is the folder you exchange data between Host computer (<code>$(pwd)/work</code>) and container virtual machine (<code>/work</code>).</p>
 <p>The <code>attach</code> subcommand will link your current Linux terminal to the running docker container (<code>bioinfo</code> in this case).  Tips:  Hold Ctrl key and press P,Q to detach the container terminal and get back to host OS.</p>
 <p>Type the following command to enter demo data folder work folder in attached Docker container terminal</p>
 <pre><code>cd /work/ssp
 </code></pre>
-<p>All Linux commands below should be typed in this terminal.</p>
+<p>All Linux commands below should be typed in this container terminal.</p>
 <h3 id="preparing-rna-sed-based-gene-expression-evidence-for-maker-pipeline">1.2 Preparing RNA-sed based gene expression evidence for Maker pipeline</h3>
 <p>Some plant SSP genes may only express under limited condition or tissue, such as nutrient deficient root. Related RNA-seq data will help to improve the performance of SSP gene mining. The following sample code will perform  reference-based transcriptome assembly and generate a GFFfile for downstream Maker analysis.</p>
 <p><strong>1.2.1 Prepare working folder</strong></p>
