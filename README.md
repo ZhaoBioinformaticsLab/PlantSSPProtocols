@@ -16,9 +16,12 @@
 <li>Default user in Docker container is <code>test</code>.</li>
 </ol>
 <p><strong>1.1.2 Computer:</strong><br>
-A  high-performance computer (I7/Xeon processor and &gt;16GB RAM) with CentOS 7, Ubuntu 16.04 or higher as operation system.</p>
+A  high-performance computer (I7/Xeon processor and &gt;16GB RAM) with CentOS 7, Ubuntu 16.04 or higher as your host operation system(OS).</p>
 <p><strong>1.1.3 Work folder</strong><br>
-Work folder is the place for raw input data (genomic sequences, gff, RNA-seq and protein, etc ) and analysis result. It usually can be <code>work</code> under current directory (your home directory).</p>
+Work folder is the place for raw input data (genomic sequences, gff, RNA-seq and protein, etc ) and analysis result in your host OS. It is recommend to be <code>work</code> under your home directory.  For example, if your username is <code>test</code> in host OS, the recommended work folder will be <code>/home/test/work</code> in your host OS. To make work in your home directory of host OS:</p>
+<pre><code>cd ~   # ~ means your home directory, e.g. /home/test
+mkdir work
+</code></pre>
 <p><strong>1.1.4 Input data</strong></p>
 <ul>
 <li>Genomics sequences in FASTA format</li>
@@ -28,13 +31,14 @@ Work folder is the place for raw input data (genomic sequences, gff, RNA-seq and
 <li>Other EST/transcript sequences from the same species.</li>
 </ul>
 <p><strong>1.1.5 Demo data</strong><br>
-The demo data is available for <a href="">download</a>. Copy it to <code>work</code> folder and type the following command to unzip it.</p>
-<pre><code>cd work
+The demo data is available for <a href="">download</a>. <strong>In host OS</strong>, copy it to your work folder and type the following command to unzip it.</p>
+<pre><code>cd ~/work
 tar -xzvf ssp-demo.tar.gz
 </code></pre>
-<p>The above command will generate <code>ssp</code> folder under <code>work</code>. In the <code>ssp/data</code> folder, <code>ssp_family.fa</code> is protein sequences of known SSP genes. The known SSP file is used in Maker genome annotation (Protocol #1) and SSP gene annotation (Protocol #2).</p>
+<p>The above command will generate <code>ssp</code> folder under <code>work</code>.</p>
+<p>In the <code>~/work/ssp/data</code> folder, <code>ssp_family.fa</code> is protein sequences of known SSP genes. The known SSP file is used in Maker genome annotation (Protocol #1) and SSP gene annotation (Protocol #2).</p>
 <p><strong>1.1.6 Software installation:</strong><br>
-All software have been configured and packed as a docker image hosted in <a href="https://hub.docker.com/">Docker Hub</a>. Firstly, install docker packages and enable/start docker service:</p>
+All software have been configured and packed as a docker image hosted in <a href="https://hub.docker.com/">Docker Hub</a>. Firstly, install docker packages and enable/start docker service in your host OS:</p>
 <p>Under CentOS 7, install docker packages:</p>
 <pre><code>sudo yum install docker
 </code></pre>
@@ -46,19 +50,19 @@ All software have been configured and packed as a docker image hosted in <a href
 sudo systemctl start docker    
 </code></pre>
 <p>Then, start a container of SSP-mining image to input Linux command line:</p>
-<pre><code>sudo docker run -d -it -e "uid=$(id -u)" -e "gid=$(id -g)" --name bioinfo -v $(pwd)/work:/work docker.io/noblebioinfo/sspgene
-sudo docker attach bioinfo
+<pre><code>sudo docker run -d -it -e "uid=$(id -u)" -e "gid=$(id -g)" --name sspvm -v $(pwd)/work:/work docker.io/noblebioinfo/sspgene
+sudo docker attach sspvm
 </code></pre>
-<p>In above case, user start a Docker container with name <code>bioinfo</code> using <a href="http://docker.io/noblebioinfo/sspgene">docker.io/noblebioinfo/sspgene</a> as template image. The step will take a while depend on your network download speed.</p>
-<p><code>$(pwd)/work</code> indicates that the <code>work</code> folder under current directory will be mounted on <code>/work</code> in Docker container with name <code>bioinfo</code>. This is the folder you exchange data between Host computer (<code>$(pwd)/work</code>) and container virtual machine (<code>/work</code>).</p>
+<p>The above commands will start a Docker container named <code>sspvm</code> using  <code>docker.io/noblebioinfo/sspgene</code> as template image. The step will take a while depend on your network download speed.</p>
+<p>In  <code>-v $(pwd)/work:/work</code>:  <code>$(pwd)/work</code>, the path of work folder in your host OS, is <code>work</code> under your current directory. Here,<code>$(pwd)</code> will be converted to your current folder, e.g. home folder by Linux Bash interpreter. The work folder in host OS will be mounted on <code>/work</code> in Docker container. Thus, the folder makes it possible to exchange data between Host computer (<code>$(pwd)/work</code>) and Docker container  (<code>/work</code>). You can copy your demo data or other research data to the work folder under hosts OS <code>$(pwd)/work</code> and access them in <code>/work</code> under Docker container.</p>
 <p>The <code>attach</code> subcommand will link your current Linux terminal to the running docker container (<code>bioinfo</code> in this case).  Tips:  Hold Ctrl key and press P,Q to detach the container terminal and get back to host OS.</p>
 <p>Type the following command to enter demo data folder work folder in attached Docker container terminal</p>
 <pre><code>cd /work/ssp
 </code></pre>
 <p>All Linux commands below should be typed in this container terminal.</p>
 <h3 id="preparing-rna-sed-based-gene-expression-evidence-for-maker-pipeline">1.2 Preparing RNA-sed based gene expression evidence for Maker pipeline</h3>
-<p>Some plant SSP genes may only express under limited condition or tissue, such as nutrient deficient root. Related RNA-seq data will help to improve the performance of SSP gene mining. The following sample code will perform  reference-based transcriptome assembly and generate a GFFfile for downstream Maker analysis.</p>
-<p><strong>1.2.1 Prepare working folder</strong></p>
+<p>Some plant SSP genes may only express under limited condition or tissue, such as nutrient deficient root. Related RNA-seq data will help to improve the performance of SSP gene mining. The following sample code will perform  reference-based transcriptome assembly and generate a GFF file for Maker genome annotation.</p>
+<p><strong>1.2.1 Prepare work folder</strong></p>
 <pre><code>cd /work/ssp
 mkdir transcriptome
 cd transcriptome/
@@ -148,6 +152,7 @@ sed -ri 's/^&gt;\S+\s+gene=/&gt;/' all_protein.fa
 <li>SSP gene expression specific RNA-seq data in compress fastq format</li>
 <li>Protein sequence (with gene ID as protein ID) of SSP gene candidates in FASTA format</li>
 <li>Transcript sequences of SSP gene  candidates and a two-columns mapping file between gene and transcript id.</li>
+<li>Known SSP protein sequences and HMM library; Both data are available in Docker image and demo data.</li>
 </ul>
 <h3 id="only-keep-short-sequences-250-a.a.">2.2 Only keep short sequences (&lt;250 a.a.)</h3>
 <pre><code>keepshortseq all_protein.fa 250 &gt; short-seq.fa
