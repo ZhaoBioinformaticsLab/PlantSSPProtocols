@@ -8,7 +8,7 @@
 <h3 id="prerequisite">1.1 Prerequisite</h3>
 <p><strong>1.1.1 Suggestion:</strong></p>
 <ol>
-<li>We recommend an X-windows desktop (such as gnome/XFCE/MATE) stead of SSH terminal because it is more convenient to edit file.</li>
+<li>We recommend an X-windows desktop (such as gnome/XFCE/MATE) instead of SSH terminal because it is more convenient to edit file.</li>
 <li>All commands below are typed  under Linux terminal.</li>
 <li>A line start with <code>#</code> in Linux command line indicates that this is explanatory information only.</li>
 <li>You need a no-root user with sudo privilege in host system to install docker packages and enable docker service. Asking your system administrator to install docker service and add your user as a member of docker group if you can’t have <code>sudo</code> privileges.</li>
@@ -47,7 +47,7 @@ sudo systemctl start docker
 <p>Then, start a container of SSP-mining image to input Linux command line:</p>
 <pre><code>#start a Docker container with name `bioinfo` using xxx as template image
 #this step will take a while depend on your network speed
-sudo docker run -d -it -e "uid=$(id -u)" -e "gid=$(id -g)" --name bioinfo -v $(pwd)/work:/work centos7bioperl:test6 shell
+sudo docker run -d -it -e "uid=$(id -u)" -e "gid=$(id -g)" --name bioinfo -v $(pwd)/work:/work docker.io/noblebioinfo/sspgene
 sudo docker attach bioinfo
 </code></pre>
 <p><code>$(pwd)/work</code> indicates that the <code>work</code> folder under current directory will be mounted on <code>/work</code> in Docker container. This is the folder you exchange data between Host computer (<code>$(pwd)/work</code>) and container virtual machine (<code>/work</code>).</p>
@@ -56,27 +56,39 @@ sudo docker attach bioinfo
 <pre><code>cd /work/ssp
 </code></pre>
 <p>All Linux commands below should be typed in this terminal.</p>
-<h3 id="optimized-genome-annotation-procedure-for-mining-ssp-gene-using-maker-pipeline">1.2 Optimized genome annotation procedure for mining SSP gene using Maker pipeline</h3>
-<p>General genome annotation procedure can be optimized to identify more SSP gene through including SSP-specific expression evidence and conserved known SSP domain.</p>
-<h4 id="preparing-rna-sed-based-gene-expression-evidence-for-maker-pipeline">1.2.1 Preparing RNA-sed based gene expression evidence for Maker pipeline</h4>
-<p>Some plant SSP genes may only express under limited condition or tissue, such as nutrient deficient root. Related RNA-seq data will help to improve the performance of SSP gene mining. The following sample code will perform  reference-based transcriptome assembly and generate a gff file for downstream Maker analysis.</p>
+<h3 id="preparing-rna-sed-based-gene-expression-evidence-for-maker-pipeline">1.2 Preparing RNA-sed based gene expression evidence for Maker pipeline</h3>
+<p>Some plant SSP genes may only express under limited condition or tissue, such as nutrient deficient root. Related RNA-seq data will help to improve the performance of SSP gene mining. The following sample code will perform  reference-based transcriptome assembly and generate a GFFfile for downstream Maker analysis.</p>
+<p><strong>1.2.1 Prepare working folder</strong></p>
 <pre><code>cd /work/ssp
 mkdir transcriptome
 cd transcriptome/
-gffread data/ref.gff3 -T -o ref.gtf
+</code></pre>
+<p><strong>1.2.2 Compile the genomics sequences using HISAT2</strong></p>
+<pre><code>hisat2-build data/genome.fa genome_hisat2
+</code></pre>
+<p><strong>1.2.3 Extract splicing sites (if reference annotation is available) using HISAT2</strong></p>
+<pre><code>gffread data/ref.gff3 -T -o ref.gtf
 hisat2_extract_splice_sites.py ref.gtf &gt; splicesites.txt
-hisat2-build ../data/genome.fa genome_hisat2
-time hisat2 -p 20 -x genome_hisat2 --known-splicesite-infile splicesites.txt --dta --dta-cufflinks -1 data/RNA-seq/root_R1.fq.gz,data/RNA-seq/nod_R1.fq.gz,data/RNA-seq/bud_R1.fq.gz -2 data/RNA-seq/root_R2.fq.gz,data/RNA-seq/nod_R2.fq.gz,data/RNA-seq/bud_R2.fq.gz -U data/RNA-seq/SRR1377073.fastq.gz,data/RNA-seq/SRR1377076.fastq.gz | samtools view -bS - &gt; all_runs.bam
-sambamba sort -m 40G --tmpdir tmp/ -o all_runs.sorted.bam -p -t 20 all_runs.bam
-stringtie all_runs.sorted.bam -o transcriptome_models.gtf -p 20
+</code></pre>
+<p><strong>1.2.4 Map RNA-seq read on genomic sequences</strong></p>
+<pre><code>time hisat2 -p 20 -x genome_hisat2 --known-splicesite-infile splicesites.txt --dta --dta-cufflinks -1 data/RNA-seq/root_R1.fq.gz,data/RNA-seq/nod_R1.fq.gz,data/RNA-seq/bud_R1.fq.gz -2 data/RNA-seq/root_R2.fq.gz,data/RNA-seq/nod_R2.fq.gz,data/RNA-seq/bud_R2.fq.gz -U data/RNA-seq/SRR1377073.fastq.gz,data/RNA-seq/SRR1377076.fastq.gz | samtools view -bS - &gt; all_runs.bam
+</code></pre>
+<p>Mapping result is <code>all_runs.bam</code> in this example.</p>
+<p><strong>1.2.5 Sort BAM file using sambamba</strong></p>
+<pre><code>sambamba sort -m 40G --tmpdir tmp/ -o all_runs.sorted.bam -p -t 20 all_runs.bam
+</code></pre>
+<p>Sorted BAM result is <code>all_runs.sorted.bam</code></p>
+<p><strong>1.2.6 Reference-based transcriptome assemble</strong></p>
+<pre><code>stringtie all_runs.sorted.bam -o transcriptome_models.gtf -p 20
 cufflinks2gff3  transcriptome/transcriptome_models.gtf &gt; transcriptome/transcriptome_models.gff3
 </code></pre>
-<p><code>-p 20</code> or <code>-t 20</code> is the number of CPU cores assigned to the program. Type <code>nproc</code> to check the maximum number in your computer.<br>
-<code>-m 40G</code> is max RAM size assigned to your computer. Type <code>free</code> to check your computer RAM size.<br>
+<p>In above commands, <code>-p 20</code> or <code>-t 20</code> is the number of CPU cores assigned to the program. Type <code>nproc</code> to check the maximum number in your computer. <code>-m 40G</code> is max RAM size assigned to your computer. Type <code>free</code> to check your computer RAM size.<br>
 <code>transcriptome/transcriptome_models.gff3</code> contains transcriptome data which is expression evidence in Maker genome annotation (next step)</p>
-<h4 id="identification-of-ssp-gene-using-maker-pipeline">1.2.2  Identification of SSP gene using Maker pipeline</h4>
-<p>The protocol for genome annotation using Maker has been well documented [ref]. We installed and tested Maker pipeline in the Docker image xxx. Users need to generate three maker_opts files: <code>maker_opts_1.ctl</code>, <code>maker_opts_2.ctl</code> and <code>maker_opts_3.ctl</code>. In addition, Maker also need maker_bopts.ctl and maker_exe.ctl files. These files include input data files path and other settings for genome annotation. Maker will take these files  as input to generate final gff file with genome annotation information. The annotation procedure will be typically invoked for three rounds to generate optimized result.</p>
-<p>The gff file for transcriptome generated by previous step and known SSP protein sequences (as of 01/2019, under /work/ssp/data) will be put in above three maker_opts files (line 18 and 23). The extra information will help maker to identify novel SSP genes.</p>
+<h3 id="optimized-genome-annotation-procedure-for-mining-ssp-gene-using-maker-pipeline">1.2 Optimized genome annotation procedure for mining SSP gene using Maker pipeline</h3>
+<p>General genome annotation procedure can be optimized to identify more SSP gene through including SSP-specific expression evidence and conserved known SSP domain.</p>
+<p><strong>1.2.1. prepare Maker configuration file</strong><br>
+The protocol for genome annotation using Maker has been well documented [ref]. We installed and tested Maker pipeline in the Docker image xxx. Users need to generate three maker_opts files: <code>maker_opts_1.ctl</code>, <code>maker_opts_2.ctl</code> and <code>maker_opts_3.ctl</code>. In addition, Maker also need maker_bopts.ctl and maker_exe.ctl files. These files include input data files path and other settings for genome annotation. Maker will take these files  as input to generate final gff file with genome annotation information. The annotation procedure will be typically invoked for three rounds to generate optimized result.</p>
+<p>The GFF file for transcriptome generated by previous step and known SSP protein sequences (as of 01/2019, under /work/ssp/data) will be put in above three maker_opts files (line 18 and 23). The extra information will help maker to identify novel SSP genes.</p>
 <p>We included all Maker configuration files in demo data. Users should be able to test Maker for the first round using the following command:</p>
 <pre><code>cd /work/ssp
 time /usr/lib64/mpich/bin/mpiexec -n 20 maker -fix_nucleotides maker_opts_1.ctl maker_bopts.ctl maker_exe.ctl  1&gt;&amp;2 2&gt;log
@@ -145,16 +157,17 @@ time /usr/lib64/mpich/bin/mpiexec -n 20 maker -fix_nucleotides maker_opts_1.ctl 
 <li>Protein sequence (with gene ID as protein ID) of SSP gene candidates in FASTA format</li>
 <li>Transcript sequences of SSP gene  candidates and a two-columns mapping file between gene and transcript id.</li>
 </ul>
-<h3 id="only-keep-short-sequences">2.2 Only keep short sequences</h3>
-<pre><code>keepshortseq all_protein.fa 200 &gt; short-seq.fa
+<h3 id="only-keep-short-sequences-250-a.a.">2.2 Only keep short sequences (&lt;250 a.a.)</h3>
+<pre><code>keepshortseq all_protein.fa 250 &gt; short-seq.fa
 </code></pre>
 <h3 id="smith-waterman-search-against-known-ssp-protein">2.3 Smith-waterman search against known SSP protein</h3>
 <p>Smith-Waterman alignment is more accurate way for sequence homolog search compared to BLAST search. The wrapped shell script <code>swsearch</code> use <a href="https://fasta.bioch.virginia.edu/fasta_www2/fasta_list2.shtml">FASTA</a> software to perform Smith-waterman search against known SSP proteins (<code>target.fa</code> in demo data) and take top 2 hits (Expection&lt;0.01) as output. The script will remove hit sequence ID and only output family name.</p>
-<pre><code>swsearch  short-seq.fa /work/ssp/data/ssp_family.fa &gt; sw.txt
+<pre><code>swsearch short-seq.fa /work/ssp/data/ssp_family.fa 0.01 &gt; sw.txt
 </code></pre>
-<p>The final result file is <code>sw.txt</code> in this case.</p>
+<p><strong>E-value option to be added</strong><br>
+The final result file is <code>sw.txt</code> in this case.</p>
 <h3 id="hmm-search-against-hmms-of-known-ssp-families">2.4 HMM search against HMMs of known SSP families</h3>
-<p><strong>2.4.1  Generate HMM library for all known SSP families from SPADA pipeline</strong></p>
+<p><strong>2.4.1  Generate HMM library for all known SSP families from SPADA installation</strong></p>
 <pre><code>cat /opt/spada_soft/spada/CRP_PlantSSPv1_Noble/15_hmm/*.hmm &gt; all.hmm
 </code></pre>
 <p><strong>2.4.2  compile HMM library</strong></p>
@@ -163,21 +176,21 @@ time /usr/lib64/mpich/bin/mpiexec -n 20 maker -fix_nucleotides maker_opts_1.ctl 
 <p><strong>2.4.3  search your protein sequence against HMM library</strong></p>
 <pre><code>hmmscan --cpu 20 -E 0.01 --tblout hmm_output.txt all.hmm short-seq.fa &gt; /dev/null
 </code></pre>
-<p>The expectation cutoff for <code>hmmscan</code> is <code>0.01</code>. <code>short-seq.fa</code> is input protein file. <code>all.hmm</code> is HMM library files.</p>
+<p>The expectation cutoff <code>-E</code> for <code>hmmscan</code> is <code>0.01</code>. <code>short-seq.fa</code> is input protein file and <code>all.hmm</code> is HMM library files.</p>
 <p>The above commands will generate a tab-delimited table file <code>hmm_output.txt</code>.  In the result table, column #1 is HMM family name and column #2 is gene ID in input protein sequence file.</p>
 <h3 id="signal-peptide-detection">2.5 Signal peptide detection</h3>
 <p>We choose SignalP to predict signal peptide from SSP candidate peptides. We recommend to use “No TM” and long output format. D-score thresholds are usually 0.45 or 0.5, depending on the type of network chosen (with or without transmembrane segments), but we recommend to use a D-score of ≥ 0.45 for known SSPs or ≥ 0.25 for putative SSPs.</p>
 <pre><code>/opt/spada_soft/signalp-4.1/signalp -t euk -f long -s notm short-seq.fa &gt; signalp_long.txt
 cat signalp_long.txt | singalP_parser  &gt; sp.txt
 </code></pre>
-<p>In this case, <code>/opt/spada_soft/signalp-4.1/signalp</code> is Signalp program which output prediction result file <code>signalp_long.txt</code>.  <code>singalP_parser</code> is a script to parse long format output of SignalP. The final signal peptide prediction result <code>sp.txt</code> includes four columns:  gene ID,  start coordinates,  end coordinates,  D-value, cut-off and conclusion(YES/NO)</p>
+<p>In this case, <code>/opt/spada_soft/signalp-4.1/signalp</code> is Signalp program which output prediction result file <code>signalp_long.txt</code>.  <code>singalP_parser</code> is a script to parse long format output of SignalP. The final signal peptide prediction result <code>sp.txt</code> includes four columns:  gene ID,  start coordinates,  end coordinates,  D-value, cut-off and conclusion(YES/NO).</p>
 <h3 id="identification-of-novel-ssp-gene-families-using-mcl-analysis">2.6 Identification of novel SSP gene families using MCL analysis</h3>
-<p>SSP candidate (signalp D-value&gt;0.25)   can be clustered into candidate SSP families using Markov Chain Cluster (MCL). The procedure should be performed on last 50 a.a. and candidate  pipetide should be less than 230 a.a…</p>
+<p>SSP candidate (signalp D-value&gt;0.25)   can be clustered into candidate SSP families using Markov Chain Cluster (MCL)[PMID:11917018]. The procedure should be performed on last 50 a.a. and candidate  pipetide should be less than 230 a.a…</p>
 <p><strong>2.6.1. Create index to retrieve protein sequence by sequence ID.</strong></p>
 <pre><code>cdbfasta short-seq.fa
 </code></pre>
-<p><strong>2.6.2 Only will take the protein with D-value&gt;0.25.</strong></p>
-<pre><code>cat sp.txt | awk '{if($4&gt;0.25) print $1}' | cdbyank short-seq.fa.cidx  &gt; all_putative_ssp.fa
+<p><strong>2.6.2 Only will take the protein with D-value&gt;0.45.</strong></p>
+<pre><code>cat sp.txt | awk '{if($4&gt;0.45) print $1}' | cdbyank short-seq.fa.cidx  &gt; all_putative_ssp.fa
 </code></pre>
 <p><strong>2.6.3 The candidate proteins should be shorter than 230 a.a. and only take the last 50 a.a…</strong></p>
 <pre><code>shortseqtail all_putative_ssp.fa 230 50 &gt; peptide-tail.fa
@@ -193,14 +206,15 @@ bioparser -t ssearch -m sw_for_peptidetail | awk '{print $3,$6,$14}' FS="\t" | s
 mcl last50seq.mci -I 1.4 -use-tab protein-protein.tab
 </code></pre>
 <p>In this case, <code>mcl</code> command will generate <code>out.last50seq.mci.I14</code>, in which all gene/protein belonging to the same cluster will be put in one line.</p>
-<p>Next, try type following command to generate a cluster name vs gene/protein ID table file.</p>
+<p>Referring to <a href="https://micans.org/mcl/">MCL manual</a> to adjust <code>-I</code>. The current value for <code>-I</code> generate larger clusters. You may consider to increase the value to get smaller clusters.</p>
+<p>Next, type following command to generate a cluster name vs gene/protein ID table file.</p>
 <pre><code>cat out.last50seq.mci.I14 | awk '{print "Cluster_" NR "\t" $0}' |awk '{ OFS="\n" $1 "\t";$1="";print $0;}'|grep -Pv '^\s*$' &gt; mclcluster_protein.txt
 </code></pre>
 <p><code>mclcluster_protein.txt</code> is the result file containing cluster-protein mapping.</p>
 <h3 id="gene-expression-analysis-of-rna-seq-data">2.7 Gene expression analysis of RNA-seq data</h3>
 <p>Use the published software RSEM [PMID:21816040]  to generate gene expression table using RNA-seq  data. In generated table, each gene will occupy one row and each RNA-seq sample will take one column. We recommend transcript per million transcripts (TPM) value in this table.</p>
 <h3 id="perform-transmembrane-helix-tmh-prediction">2.8 Perform transmembrane helix (TMH) prediction</h3>
-<p>TMH prediction is a criterion used to classify the putative SSPs(de Bang et al., 2017) because a gene harboring TMHs cannot be considered as an SSP.</p>
+<p>TMH prediction is a criterion used to classify the putative SSPs (de Bang et al., 2017) because a gene harboring TMHs cannot be considered as an SSP.</p>
 <p><strong>2.8.1  Remove the N-terminal signal peptide from the input protein sequence(s)</strong></p>
 <p>Signal peptides tend to display high hydrophobicity and are often reported as false positive prediction. [to-be-complete]</p>
 <p><strong>2.8.2  Perform TMH prediction</strong><br>
@@ -208,4 +222,6 @@ We recommend the TMHMM server because it is easy-to-use and accurate due to its 
 <h3 id="comprehensive-table-of-gene-annotation-evidence">2.9 Comprehensive table of gene annotation evidence</h3>
 <p>The result file generated from Section 2.3 to 2.8 should be merged  into a comprehensive data table in which each gene will use one row and each annotation information, such as RNA-seq sample, family name from Smith-Waterman search and HMM search, D-value from signalP and cluster ID from MCL analysis will be take one column. Microsoft Excel is a nice tool to merge and generate such comprehensive table.</p>
 <p>Further curation based on the table will help to screen known and putative SSP genes. The genes with Smith-Waterman or HMM hits will be considered as known SSP genes. Other genes with D-value(&gt;0.25) and shorter than 230 a.a. will be  considered as putative SSP genes. The gene expression value is also helpful to identify gene with high confidence.</p>
+<h2 id="trouble-shooting">Trouble shooting</h2>
+<p><strong>You cannot attached to a stopped container, start it first</strong></p>
 
